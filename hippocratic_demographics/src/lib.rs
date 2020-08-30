@@ -1,100 +1,161 @@
 pub mod human {
+    // use std::borrow::Borrow;
     use std::collections::{HashSet, HashMap};
-    use std::hash::Hash;
+    use std::fmt;
+    use std::hash::{Hash, Hasher};
+    use std::rc::Rc;
     use std::str::FromStr;
-    use unicode_segmentation::UnicodeSegmentation;
     use super::option_date_time::OptionDate;
-    use super::entity::{Entity, Address, GovernmentID};
-    use super::organization::Organization;
+    use super::entity::*;
+    // use super::organization::Organization;
 
-    #[derive(Debug, PartialEq, Eq, Hash)]
+    pub type SSN = TIN;
+
+    #[derive(Debug, PartialEq, Eq)]
     pub struct Human {
         name: HumanName,
-        // governmentID: GovernmentID,
+        ssn: SSN,                                               // I wish this was more internationalized, but I haven't figured out how to do it yet
         birth_date: OptionDate,
-        // addresses: HashMap<&'static str, Address>,
-        // phone_numbers: HashMap<&'static str, &'static str>,
-        // email_addresses: HashMap<&'static str, &'static str>,
-        employers: HashSet<Organization>,
+        addresses: HashMap<AddressType, Address>,
+        phone_numbers: HashMap<PhoneNumberType, PhoneNumber>,
+        email_addresses: HashMap<EmailAddressType, EmailAddress>,
+        employers: HashSet<Rc<String>>,                       // employers: HashSet<Organization>,
         // TODO: Methods? Any more fields?
     }
 
-    impl Entity for Human {}
-    
-    #[derive(Debug, PartialEq, Eq, Hash)]
-    pub enum HumanName {
-        FirstMiddleLast { first_name: &'static str, middle_name: &'static str, last_name: &'static str },
-        FirstLastNoMiddle { first_name: &'static str, last_name: &'static str },
-        FirstMiddleMaidenLast { first_name: &'static str, middle_name: &'static str, maiden_name: &'static str, last_name: &'static str },
-        FirstMiddleLastMothersMaiden { first_name: &'static str, middle_name: &'static str, last_name: &'static str, mothers_maiden_name: &'static str },
-        FamilyNameGivenNames { family_name: &'static str, given_names: Vec<&'static str> },
-        Patronymic1 { given_name: &'static str, fathers_name: &'static str, grandfathers_name: &'static str },
-        Patronymic2 { given_name: &'static str, middle_name: &'static str, fathers_name: &'static str },
-        FirstMiddleMultipleLastNames { first_name: &'static str, middle_name: &'static str, last_names: Vec<&'static str> },
-        Fallback { name_components: Vec<&'static str> },
+    impl Hash for Human {
+        fn hash<H: Hasher>(&self, state: &mut H) {
+            self.name.hash(state);
+            self.ssn.hash(state);
+            self.birth_date.hash(state);
+            for (addr_type, addr) in &self.addresses {
+                addr_type.hash(state);
+                addr.hash(state);
+            }
+            for (phone_type, phone) in &self.phone_numbers {
+                phone_type.hash(state);
+                phone.hash(state);
+            }
+            for (email_type, email) in &self.email_addresses {
+                email_type.hash(state);
+                email.hash(state);
+            }
+            for e in &self.employers {
+                e.hash(state);
+            }
+        }
     }
 
+    #[derive(Debug, PartialEq, Eq, Hash)]
+    pub enum HumanName {
+        FirstMiddleLast { first_name: Rc<String>, middle_name: Rc<String>, last_name: Rc<String> },
+        FirstLastNoMiddle { first_name: Rc<String>, last_name: Rc<String> },
+        FirstMiddleMaidenLast { first_name: Rc<String>, middle_name: Rc<String>, maiden_name: Rc<String>, last_name: Rc<String> },
+        FirstMiddleLastMothersMaiden { first_name: Rc<String>, middle_name: Rc<String>, last_name: Rc<String>, mothers_maiden_name: Rc<String> },
+        FamilyNameGivenNames { family_name: Rc<String>, given_names: Vec<Rc<String>> },
+        Patronymic1 { given_name: Rc<String>, fathers_name: Rc<String>, grandfathers_name: Rc<String> },
+        Patronymic2 { given_name: Rc<String>, middle_name: Rc<String>, fathers_name: Rc<String> },
+        FirstMiddleMultipleLastNames { first_name: Rc<String>, middle_name: Rc<String>, last_names: Vec<Rc<String>> },
+        Fallback { name_components: Vec<Rc<String>> },
+    }
+
+    #[derive(Debug)]
     pub struct HumanNameParseErr;
+    pub type HumanNameResult = Result<HumanName, HumanNameParseErr>;
+
+    fn write_name_components(f: &mut fmt::Formatter, name_components: &Vec<Rc<String>>) -> fmt::Result {
+        if name_components.len() > 0 {
+            write!(f, "{}", name_components[0])?;
+            for i in 1..name_components.len() {
+                write!(f, " {}", name_components[i])?;
+            }
+        }
+        Ok(())
+    }
 
     impl FromStr for HumanName {
         type Err = HumanNameParseErr;
 
         // TODO: Implement more sophisticated parsing
-        fn from_str(s: &str) -> Result<Self, Self::Err> {
-            let name_components = vec!(s.split_whitespace());
-            let ret_val = Fallback { name_components: name_components };
+        fn from_str(s: &str) -> HumanNameResult {
+            let name_components_iter = s.split_whitespace();
+            let mut name_components = Vec::<Rc<String>>::new();
+            for s in name_components_iter {
+                name_components.push(Rc::new(s.to_string()));
+            }
+            let ret_val = HumanName::Fallback { name_components: name_components };
             Ok(ret_val)
         }
     }
 
-    pub type SSNParseErr;
-    
-    // TODO: Custom implementation of these traits?
-    #[derive(Debug, PartialEq, Eq, Hash)]
-    pub struct SocialSecurityNumber {
-        unencrypted_string: &'static str,
-    }
-
-    impl FromStr for SocialSecurityNumber {
-        type Err = SSNParseErr;
-        
-        // TODO: Implement more sophisticated parsing
-        fn from_str(s: &str) -> Result<Self, Self::Err> {
-            Ok(SocialSecurityNumber { unencrypted_string: s })
-        }
-    }
-
-    impl GovernmentID for SocialSecurityNumber {
-        // pub fn new(from_string: &'static str) -> SocialSecurityNumber {
-        //     SocialSecurityNumber { unencrypted_string: from_string }
-        // }
-
-        pub fn as_unencrypted_string(&self) -> &str {
-            self.unencrypted_string
-        }
-
-        pub fn as_encrypted_bytes(&self) -> Result<&Vec<u8>, str> {
-            // TODO: Implement this
-            Err("Not yet implemented")
-        }
-
-        pub fn last_few_chars(&self) -> Result<&Vec<char>, str> {
-            let g = self.unencrypted_string.graphemes(true).collect::<Vec<&str>>();
-            let last_few = &g[g.len-4..];
-            Ok(last_few)
+    impl fmt::Display for HumanName {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            match self {
+                HumanName::FirstMiddleLast{first_name, middle_name, last_name}                                      => write!(f, "{} {} {}", first_name, middle_name, last_name),
+                HumanName::FirstLastNoMiddle{first_name, last_name}                                                 => write!(f, "{} {}", first_name, last_name),
+                HumanName::FirstMiddleMaidenLast{first_name, middle_name, maiden_name, last_name}                   => write!(f, "{} {} {} {}", first_name, middle_name, maiden_name, last_name),
+                HumanName::FirstMiddleLastMothersMaiden{first_name, middle_name, last_name, mothers_maiden_name}    => write!(f, "{} {} {} {}", first_name, middle_name, last_name, mothers_maiden_name),
+                HumanName::FamilyNameGivenNames{family_name, given_names}                                           => {
+                    write!(f, "{} ", family_name)?;
+                    write_name_components(f, given_names)?;
+                    Ok(())
+                },
+                HumanName::Patronymic1{given_name, fathers_name, grandfathers_name}                                 => write!(f, "{} {} {}", given_name, fathers_name, grandfathers_name),
+                HumanName::Patronymic2{given_name, middle_name, fathers_name}                                       => write!(f, "{} {} {}", given_name, middle_name, fathers_name),
+                HumanName::FirstMiddleMultipleLastNames{first_name, middle_name, last_names}                        => {
+                    write!(f, "{} {} ", first_name, middle_name)?;
+                    write_name_components(f, last_names)?;
+                    Ok(())
+                },
+                HumanName::Fallback{name_components}                                                                => write_name_components(f, name_components),
+            }
         }
     }
 }
 
 pub mod option_date_time {
+    use std::fmt;
     use std::hash::Hash;
+    use std::str::FromStr;
+    use regex::Regex;
 
     #[derive(Debug, PartialEq, Eq, Hash)]
     pub struct OptionDate {
         year: Option<i64>,
         month: Option<u8>,
         day: Option<u8>,
-        // TODO: Figure out methods
+        // TODO: Any more methods?
+    }
+
+    #[derive(Debug)]
+    pub struct OptionDateParseErr;
+    pub type OptionDateResult = Result<OptionDate, OptionDateParseErr>;
+
+    impl FromStr for OptionDate {
+        type Err = OptionDateParseErr;
+        
+        // TODO: Allow for more flexible parsing
+        fn from_str(s: &str) -> OptionDateResult {
+            // TODO: Make this lazy_static
+            let re = Regex::new(r"^(\d{4})-(\d{2})-(\d{2})$").unwrap();
+            if re.is_match(s) {
+                let caps = re.captures(s).unwrap();
+                let year: i64 = caps[1].parse().unwrap();
+                let month: u8 = caps[2].parse().unwrap();
+                let day: u8 = caps[3].parse().unwrap();
+                let ret_val = OptionDate { year: Some(year), month: Some(month), day: Some(day) };
+                Ok(ret_val)
+            } else {
+                Err(OptionDateParseErr)
+            }
+        }
+    }
+
+    impl fmt::Display for OptionDate {
+        // TODO: Allow for the possibility that one or more of these optional components are missing
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f, "{}-{}-{}", self.year.unwrap(), self.month.unwrap(), self.day.unwrap())
+        }
     }
 
     #[derive(Debug, PartialEq, Eq, Hash)]
@@ -103,20 +164,86 @@ pub mod option_date_time {
         minute: Option<u8>,
         second: Option<u8>,
         nanosecond: Option<u32>,
-        // TODO: Figure out methods
+        // TODO: Any more methods?
+    }
+
+    #[derive(Debug)]
+    pub struct OptionTimeParseErr;
+    pub type OptionTimeResult = Result<OptionTime, OptionTimeParseErr>;
+
+    impl FromStr for OptionTime {
+        type Err = OptionTimeParseErr;
+
+        // TODO: Allow for more flexible parsing
+        fn from_str(s: &str) -> OptionTimeResult {
+            // TODO: Make this lazy_static
+            let re = Regex::new(r"^(\d{2}):(\d{2}):(\d{2}):(\d{9})$").unwrap();
+            if re.is_match(s) {
+                let caps = re.captures(s).unwrap();
+                let hour: u8 = caps[1].parse().unwrap();
+                let minute: u8 = caps[2].parse().unwrap();
+                let second: u8 = caps[3].parse().unwrap();
+                let nanosecond: u32 = caps[4].parse().unwrap();
+                let ret_val = OptionTime { hour: Some(hour), minute: Some(minute), second: Some(second), nanosecond: Some(nanosecond) };
+                Ok(ret_val)
+            } else {
+                Err(OptionTimeParseErr)
+            }
+        }
+    }
+
+    impl fmt::Display for OptionTime {
+        // TODO: Allow for the possibility that one or more of these optional components are missing
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f, "{}:{}:{}.{}", self.hour.unwrap(), self.minute.unwrap(), self.second.unwrap(), self.nanosecond.unwrap())
+        }
     }
 
     #[derive(Debug, PartialEq, Eq, Hash)]
     pub struct OptionDateTime {
         date_part: OptionDate,
         time_part: OptionTime,
-        // TODO: Figure out methods
+        // TODO: Any more methods?
+    }
+
+    #[derive(Debug)]
+    pub struct OptionDateTimeParseErr;
+    pub type OptionDateTimeResult = Result<OptionDateTime, OptionDateTimeParseErr>;
+
+    impl FromStr for OptionDateTime {
+        type Err = OptionDateTimeParseErr;
+
+        // TODO: Allow for more flexible parsing
+        fn from_str(s: &str) -> OptionDateTimeResult {
+            // TODO: Make this lazy_static
+            let re = Regex::new(r"^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2}:\d{9})$").unwrap();
+            if re.is_match(s) {
+                let caps = re.captures(s).unwrap();
+                let date_part: OptionDate = caps[1].parse().unwrap();
+                let time_part: OptionTime = caps[2].parse().unwrap();
+                let ret_val = OptionDateTime { date_part: date_part, time_part: time_part };
+                Ok(ret_val)
+            } else {
+                Err(OptionDateTimeParseErr)
+            }
+        }
+    }
+
+    impl fmt::Display for OptionDateTime {
+        // TODO: Allow for the possibility that one or more of these optional components are missing
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f, "{} {}", self.date_part, self.time_part)
+        }
     }
 }
 
 pub mod entity {
+    use std::fmt;
     use std::hash::Hash;
-    use std::collections::{HashSet, HashMap};
+    use std::rc::Rc;
+    use std::str::FromStr;
+    use regex::Regex;
+    use unicode_segmentation::UnicodeSegmentation;
 
     pub type AddressType = String;
     pub type PhoneNumberType = String;
@@ -127,92 +254,143 @@ pub mod entity {
     // FIXME: Implement a custom type, with custom validation
     pub type EmailAddress = String;
     
-    pub trait Entity: Debug + PartialEq + Eq + Hash {
-        governmentID: GovernmentID,
-        addresses: HashSet<(AddressType, Address)>,
-        phone_numbers: HashSet<(PhoneNumberType, PhoneNumber)>,
-        email_addresses: HashSet<(EmailAddressType, EmailAddress)>,
+    #[derive(Debug, PartialEq, Eq, Hash)]
+    pub struct TIN {
+        unencrypted_string: Rc<String>,
     }
     
-    pub trait GovernmentID : Debug + PartialEq + Eq + Hash + FromStr {
-        // pub fn new(from_string: &'static str) -> Self;
-        pub fn as_unencrypted_string(&self) -> &str;
-        pub fn as_encrypted_bytes(&self) -> Result<&Vec<u8>, str>;
-        pub fn last_few_chars(&self) -> Result<&Vec<char>, str>;
+    #[derive(Debug)]
+    pub enum EncryptedBytesErr {
+        EncryptionError,
+        NotYetImplementedError,
     }
+    pub type EncryptedBytesResult = Result<Vec<u8>, EncryptedBytesErr>;
+    
+    #[derive(Debug)]
+    pub struct TINParseErr;
+    pub type TINResult = Result<TIN, TINParseErr>;
+
+    impl TIN {
+        pub fn as_unencrypted_string(&self) -> Rc<String> {
+            Rc::clone(&self.unencrypted_string)
+        }
+        // FIXME
+        pub fn as_encrypted_bytes(&self) -> EncryptedBytesResult {
+            Err(EncryptedBytesErr::NotYetImplementedError)
+        }
+        pub fn last_few_chars(&self) -> Rc<String> {
+            let g = UnicodeSegmentation::graphemes(self.unencrypted_string.as_str(), true).collect::<Vec<&str>>();
+            let last_few = &g[g.len()-4..];
+            Rc::new(last_few.join(""))
+        }
+    }
+    
+    impl FromStr for TIN {
+        type Err = TINParseErr;
+        
+        // TODO: Implement more sophisticated parsing
+        fn from_str(s: &str) -> TINResult {
+            Ok(TIN { unencrypted_string: Rc::new(s.to_string()) })
+        }
+    }
+
+    impl fmt::Display for TIN {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f, "XXX-XX-{}", self.last_few_chars())
+        }
+    }
+
+    #[derive(Debug)]
+    pub struct AddressParseErr;
+    pub type AddressResult = Result<Address, AddressParseErr>;
 
     #[derive(Debug, PartialEq, Eq, Hash)]
     pub struct Address {
-        line_1: &'static str,
-        line_2: &'static str,
-        line_3: &'static str,
-        city: &'static str,
-        state_or_province: &'static str,
-        zip_or_postal_code: &'static str,
-        country: &'static str,
-        // TODO: Methods?
+        line_1: Rc<String>,
+        line_2: Rc<String>,
+        line_3: Rc<String>,
+        city: Rc<String>,
+        state_or_province: Rc<String>,
+        zip_or_postal_code: Rc<String>,
+        country: Rc<String>,
+        // TODO: Any more methods?
+    }
+
+    impl FromStr for Address {
+        type Err = AddressParseErr;
+        
+        // TODO: Implement better parsing
+        fn from_str(s: &str) -> AddressResult {
+            // TODO: Make this lazy_static
+            let re = Regex::new(r"^([^,]+), *([^,]+), *([[:alpha:]]{2}) *(\d{5}), *([^,])$").unwrap();
+            if re.is_match(s) {
+                let caps = re.captures(s).unwrap();
+                let line_1 = Rc::new(caps[1].to_string());
+                let line_2 = Rc::new("".to_string());
+                let line_3 = Rc::new("".to_string());
+                let city = Rc::new(caps[2].to_string());
+                let state_or_province = Rc::new(caps[3].to_string());
+                let zip_or_postal_code = Rc::new(caps[4].to_string());
+                let country = Rc::new(caps[5].to_string());
+                let ret_val = Address { line_1: line_1, line_2: line_2, line_3: line_3, city: city, state_or_province: state_or_province, zip_or_postal_code: zip_or_postal_code, country: country };
+                Ok(ret_val)
+            } else {
+                Err(AddressParseErr)
+            }
+        }
+    }
+
+    impl fmt::Display for Address {
+        // TODO: Include lines 2 and 3 if present; separate with newlines?
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f, "{}, {}, {}, {}, {}", self.line_1, self.city, self.state_or_province, self.zip_or_postal_code, self.country)
+        }
     }
 }
 
 pub mod organization {
-    use std::collections::{HashSet, HashMap};
-    use std::hash::Hash;
-    use std::str::FromStr;
-    use unicode_segmentation::UnicodeSegmentation;
-    use super::entity::{Entity, Address, GovernmentID};
+    use std::collections::HashMap;
+    // use std::fmt;
+    use std::hash::{Hash, Hasher};
+    use std::rc::Rc;
+    // use std::str::FromStr;
+    // use unicode_segmentation::UnicodeSegmentation;
+    use super::entity::*;
 
-    // TODO: Custom implementation of these?
-    #[derive(Debug, PartialEq, Eq, Hash)]
-    pub struct TIN {
-        unencrypted_string: &'static str,
+    #[derive(Debug, PartialEq, Eq)]
+    pub struct Organization {
+        name: Rc<String>,
+        tin_number: TIN,
+        addresses: HashMap<AddressType, Address>,
+        phone_numbers: HashMap<PhoneNumberType, PhoneNumber>,
+        email_addresses: HashMap<EmailAddressType, EmailAddress>,
     }
 
-    pub type TINParseErr;
-
-    impl GovernmentID for TIN {
-        // pub fn new(from_string: &'static str) -> TIN {
-        //     TIN { unencrypted_string: from_string }
-        // }
-
-        pub fn as_unencrypted_string(&self) -> &str {
-            self.unencrypted_string
+    impl Hash for Organization {
+        fn hash<H: Hasher>(&self, state: &mut H) {
+            self.name.hash(state);
+            self.tin_number.hash(state);
+            for (addr_type, addr) in &self.addresses {
+                addr_type.hash(state);
+                addr.hash(state);
+            }
+            for (phone_type, phone) in &self.phone_numbers {
+                phone_type.hash(state);
+                phone.hash(state);
+            }
+            for (email_type, email) in &self.email_addresses {
+                email_type.hash(state);
+                email.hash(state);
+            }
         }
-
-        pub fn as_encrypted_bytes(&self) -> Result<&Vec<u8>, str> {
-            // TODO: Implement this
-            Err("Not yet implemented")
-        }
-
-        pub fn last_few_chars(&self) -> Result<&Vec<char>, str> {
-            let g = self.unencrypted_string.graphemes(true).collect::<Vec<&str>>();
-            let last_few = &g[g.len-4..];
-            Ok(last_few)
-        }
-    }
-
-    impl FromStr for TIN {
-        type Err = TINParseErr;
-
-        // TODO: Implement more sophisticated parsing and validation
-        fn from_str(s: &str) -> Result<Self, Self::Err> {
-            Ok(TIN { unencrypted_string: s })
-        }
-    }
-
-    #[derive(Debug, PartialEq, Eq, Hash)]
-    pub trait Organization : Entity {
-        name: &'static str,
-        // governmentID: GovernmentID,
-        // addresses: HashMap<&'static str, Address>,
-        // phone_numbers: HashMap<&'static str, &'static str>,
-        // email_addresses: HashMap<&'static str, &'static str>,
     }
 }
 
 pub mod health_insurance {
+    // use std::fmt;
     use std::hash::Hash;
     use super::option_date_time::OptionDate;
-    use super::entity::Organization;
+    use super::organization::Organization;
     use super::human::Human;
     
     #[derive(Debug, PartialEq, Eq, Hash)]
@@ -220,139 +398,219 @@ pub mod health_insurance {
         date_of_service: OptionDate,
         // TODO: Combine these into an enum Provider, with three subtypes/elements?
         medical_facility: Option<MedicalFacility>,
-        medical_provider: Option<Human>,
+        medical_provider: Option<MedicalProvider>,
     }
 
-    #[derive(Debug, PartialEq, Eq, Hash)]
-    pub struct MedicalFacility {
-        street_address: Address,
-        mailing_address: Address,
-    }
-
-    // TODO: Fill in?
-    impl Organization for MedicalFacility {}
-
-    // TODO: Finish filling in this module
+    pub type MedicalFacility = Organization;
+    pub type MedicalProvider = Human;
 }
 
 pub mod fuzzy_matching {
+    // use std::borrow::{Borrow, BorrowMut};
+    // use std::cell::{Ref, RefCell, RefMut};
+    use std::collections::{HashSet, HashMap};
+    // use std::fmt;
     use std::hash::{Hash, Hasher};
+    use std::rc::Rc;
+    // use std::str::FromStr;
 
     pub type Similarity = f64;
     pub type EditDistance = usize;
 
-    #[derive(Debug, PartialEq, Eq, Hash)]
-    pub trait SimilarityCalculator<T> {
-        pub algorithm_name: &'static str;
-        pub fn get_similarity<T>(&T item1, &T item2) -> Similarity;
+    pub trait SimilarityCalculator {
+        fn algorithm_name(&self) -> &'static str;
+        fn get_similarity(&self, item1: Rc<String>, item2: Rc<String>) -> Similarity;
     }
 
-    #[derive(Debug, PartialEq, Eq, Hash)]
-    pub trait EditDistanceCalculator<T> : SimilarityCalculator<T> {
-        pub fn get_edit_distance<T>(&T item1, &T item2) -> EditDistance;
-        pub fn max_possible_edit_distance<T>(&T item1, &T item2) -> EditDistance;
-        pub fn get_similarity<T>(&T item1, &T item2) -> Similarity {
-            get_edit_distance(item1, item2) / max_possible_edit_distance(item1, item2)
-        }
-    }
-
-    #[derive(Debug, PartialEq, Eq, Hash)]
-    pub struct BKTree<ValueType, RecordType, EditDistanceCalc>
-        where ValueType: Debug, PartialEq, Eq, Hash
-        where RecordType: Debug, PartialEq, Eq, Hash
-        where EditDistanceCalc: EditDistanceCalculator<ValueType> {
-            root_node: BKTreeNode<ValueType, RecordType>;
-            edit_distance_calculator: &EditDistanceCalc;
-            max_distance_to_consider: EditDistance;
-    }
-
-    impl BKTree<ValueType, RecordType, EditDistanceCalc> {
-        pub fn new(first_value: ValueType, first_record: RecordType, edit_distance_calculator: EditDistanceCalculator, max_distance_to_consider: EditDistance) -> Self {
-            // let records_found_in = HashSet::new();
-            // records_found_in.insert(first_record);
-            let root_node = BKTreeNode::new(first_value, first_record /*, edit_distance_calculator, max_distance_to_consider*/);
-            let ret_val = BKTree { root_node: root_node, edit_distance_calculator: edit_distance_calculator, max_distance_to_consider: max_distance_to_consider };
-            ret_val
-        }
-
-        pub fn insert(&mut self, value: &ValueType, record_found_in: &RecordType) -> bool {
-            let mut cur_node = self.root_node;
-            let mut dist = self.edit_distance_calculator.get_edit_distance(cur_node.value, value);
-            while cur_node.children.contains_key(dist) {
-                if dist == 0 {
-                    assert!(cur_node.value == value);
-                    return cur_node.records_found_in.insert(record_found_in);
-                }
-                cur_node = cur_node.children[dist];
-                dist = self.edit_distance_calculator.get_edit_distance(cur_node.value, value);
-            }
-
-            let new_node = BKTreeNode::new(value, record_found_in /*, &self.edit_distance_calculator, &self.max_distance_to_consider*/ );
-            let new_children_hash_set = BKTreeNodeSet<ValueType, RecordType /*, EditDistanceCalc*/ >::new();
-            assert!(new_children_hash_set.insert(new_node));
-            assert!(cur_node.children.insert(dist, new_children_hash_set));
-            return true;
-        }
-
-        pub fn search(&self, value: &ValueType, record_found_in: &RecordType) -> Vec<(ValueType, RecordType)> {
-            let rtn = Vec::new();
-            self.recursive_search(value, record_found_in, rtn);
-            rtn
-        }
-
-        fn recursive_search(&self, node: &BKTreeNode, &value: ValueType, &record_found_in: RecordType, &mut rtn: Vec<(ValueType, RecordType)>) {
-            let cur_edit_distance = self.edit_distance_calculator.get_edit_distance(node.value, value);
-            let min_distance = cur_edit_distance - self.max_distance_to_consider;
-            let max_distance = cur_edit_distance + self.max_distance_to_consider;
-            if cur_edit_distance <= self.max_distance_to_consider {
-                rtn.push((value, record_found_in));
-            }
-            for k in &node.children.keys {
-                if k >= min_distance && k <= max_distance {
-                    self.recursive_search(node.children[k], value, record_found_in, rtn);
-                }
-            }
-        }
-    }
-
-    #[derive(Debug, PartialEq, Eq, Hash)]
-    struct BKTreeNodeSet<ValueType, RecordType /*, EditDistanceCalc*/ >
-        where ValueType: Debug, PartialEq, Eq, Hash
-        where RecordType: Debug, PartialEq, Eq, Hash
-        /* where EditDistanceCalc: EditDistanceCalculator<ValueType> */ {
-            set: HashSet<BKTreeNode<ValueType, RecordType /*, EditDistanceCalc*/ >>;
-    }
-
-    impl BKTreeNodeSet<ValueType, RecordType /*, EditDistanceCalc*/ > {
-        pub fn new() -> Self {
-            let ret_val = BKTreeNodeSet { set = HashSet<BKTreeNode<ValueType, RecordType /*, EditDistanceCalc*/ >>::new() };
-            ret_val
-        }
-
-        // pub fn insert(&mut self, BKTreeNode<ValueType, RecordType, EditDistanceCalc> new_child) -> bool {
-        //     return self.set.insert(new_child);
-        // }
+    pub trait EditDistanceCalculator {
+        fn algorithm_name(&self) -> &'static str;
+        fn get_edit_distance(&self, item1: &String, item2: &String) -> EditDistance;
+        fn max_possible_edit_distance(&self, item1: &String, item2: &String) -> EditDistance;
     }
 
     #[derive(Debug)]
-    pub struct BKTreeNode<ValueType, RecordType /*, EditDistanceCalc*/ >
-        where ValueType: Debug, PartialEq, Eq, Hash
-        where RecordType: Debug, PartialEq, Eq, Hash
+    pub struct BKTree<RecordType, EditDistanceCalc>
+        where RecordType: PartialEq + Eq + Hash,
+        EditDistanceCalc: EditDistanceCalculator {
+            root_node: BKTreeNode<RecordType>,
+            edit_distance_calculator: Rc<EditDistanceCalc>,
+            max_distance_to_consider: EditDistance,
+    }
+
+    impl<RecordType: PartialEq + Eq + Hash, EditDistanceCalc: EditDistanceCalculator> BKTree<RecordType, EditDistanceCalc> {
+        pub fn new(first_value: Rc<String>, first_record: Rc<RecordType>, edit_distance_calculator: Rc<EditDistanceCalc>, max_distance_to_consider: EditDistance) -> Self {
+            // let records_found_in = HashSet::new();
+            // records_found_in.insert(first_record);
+            let root_node = BKTreeNode::<RecordType>::new(first_value, first_record /*, edit_distance_calculator, max_distance_to_consider*/);
+            let ret_val = BKTree::<RecordType, EditDistanceCalc> { root_node: root_node, edit_distance_calculator: edit_distance_calculator, max_distance_to_consider: max_distance_to_consider };
+            ret_val
+        }
+
+        // pub fn insert(&mut self, value: Rc<String>, record_found_in: Rc<RecordType>) -> bool {
+        //     let mut cur_node = RefCell::new(&self.root_node);
+        //     //let cur_node_deref = (*cur_node).borrow();
+        //     let cur_node_value = &self.root_node.value;
+        //     let mut dist = self.edit_distance_calculator.get_edit_distance(&cur_node_value, &value);
+        //     //drop(cur_node_deref);
+        //     loop {
+        //         let cur_node_a = &cur_node;
+        //         let cur_node_a_deref = cur_node_a.borrow();
+        //         let children = &cur_node_a_deref.children;
+        //         let children_deref = children.borrow();
+        //         let contains_key = children_deref.contains_key(&dist);
+        //         //let children_deref: Ref<HashMap<EditDistance, BKTreeNode<RecordType>>> = (**children).borrow();
+        //         if contains_key {
+        //             let new_node = BKTreeNode::new(value, record_found_in);
+        //             // let new_children_hash_set = BKTreeNodeSet::new();
+        //             // new_children_hash_set.insert(new_node).unwrap();
+        //             //let borrow1 = (*cur_node).borrow();
+        //             //let c = borrow1.children;
+        //             let mut mut_map: RefMut<_> = children.borrow_mut();
+        //             match mut_map.insert(dist, new_node) {
+        //                 Some(new_node) => return true,
+        //                 None => return false,
+        //             }
+        //         }
+        //         if dist == 0 {
+        //             assert!((cur_node_a_deref.value).eq(&value));
+        //             let records_found_in = &cur_node_a_deref.records_found_in;
+        //             //let records_found_in_deref = records_found_in.into_inner();
+        //             //let records_found_in_borrow = (**records_found_in).borrow();
+        //             let mut mut_records_found_in: RefMut<_> = records_found_in.borrow_mut();
+        //             //let unwrapped_record_found_in = Rc::try_unwrap(record_found_in).unwrap();
+        //             return mut_records_found_in.insert(record_found_in);
+        //         }
+        //         //let borrow1 = cur_node.borrow();
+        //         //let c = borrow_a.children;
+        //         //let mut mut_map: RefMut<_> = (**children).borrow_mut();
+        //         // let cur_node_ab = Rc::clone(&cur_node_a);
+        //         // let cur_node_ab_deref = (*cur_node_ab).borrow();
+        //         // let children_ab = &cur_node_ab_deref.children;
+        //         // let children_ab_deref = (**children_ab).borrow();
+        //         //let children_ab_deref_2 = children_ab_deref.borrow();
+        //         //let children_ab_borrow: Ref<HashMap<EditDistance, BKTreeNode<RecordType>>> = (**children_ab).borrow();
+        //         //let children_ab_borrow_clone = Ref::map(&children_ab_borrow, |);
+        //         //drop(cur_node_a);
+        //         //let children_b_ptr = (*children_b).borrow();
+        //         cur_node.replace(&children_deref[&dist]);
+        //         let cur_node_b = &cur_node;
+        //         let cur_node_b_deref = cur_node_b.into_inner();
+        //         dist = self.edit_distance_calculator.get_edit_distance(&cur_node_b_deref.value, &value);
+        //         //drop(children_borrow_b);
+        //         //drop(cur_node_b);
+        //         //drop(children_deref);
+        //     }
+        // }
+
+        pub fn insert(&mut self, value: Rc<String>, record_found_in: Rc<RecordType>) -> bool {
+            self.root_node.recursive_insert(Rc::clone(&value), Rc::clone(&record_found_in), Rc::clone(&self.edit_distance_calculator))
+        }
+
+        // fn recursive_insert(&mut self, node: &mut BKTreeNode<RecordType>, value: Rc<String>, record_found_in: Rc<RecordType>) -> bool {
+        //     let dist = self.edit_distance_calculator.get_edit_distance(&node.value, &value);
+        //     if dist == 0 {
+        //         assert!(&node.value == &value);
+        //         return node.records_found_in.insert(record_found_in);
+        //     } else if node.children.contains_key(&dist) {
+        //         return self.recursive_insert(&mut node.children.get&dist], Rc::clone(&value), Rc::clone(&record_found_in));
+        //     } else {
+        //         let new_node = BKTreeNode::new(value, record_found_in);
+        //         match node.children.insert(dist, new_node) {
+        //             Some(new_node) => return true,
+        //             None => return false,
+        //         }
+        //     }
+        // }
+
+        pub fn search(&self, value: Rc<String>, record_found_in: Rc<RecordType>) -> Vec<(Rc<String>, Rc<RecordType>)> {
+            let mut rtn = Vec::new();
+            self.recursive_search(&self.root_node, value, record_found_in, &mut rtn);
+            rtn
+        }
+
+        fn recursive_search(&self, node: &BKTreeNode<RecordType>, value: Rc<String>, record_found_in: Rc<RecordType>, rtn: &mut Vec<(Rc<String>, Rc<RecordType>)>) {
+            //let node_deref = node.into_inner();
+            let cur_edit_distance = self.edit_distance_calculator.get_edit_distance(&node.value, &value);
+            let min_distance = cur_edit_distance - self.max_distance_to_consider;
+            let max_distance = cur_edit_distance + self.max_distance_to_consider;
+            if cur_edit_distance <= self.max_distance_to_consider {
+                rtn.push((Rc::clone(&value), Rc::clone(&record_found_in)));
+            }
+            let children = &node.children;
+            for k in children.keys() {
+                if (k >= &min_distance) && (k <= &max_distance) {
+                    // let b = (*node).borrow();
+                    // let c = b.children;
+                    // let map = (*c).borrow();
+                    let child_node = &children[k];
+                    self.recursive_search(child_node, Rc::clone(&value), Rc::clone(&record_found_in), rtn);
+                }
+            }
+        }
+    }
+
+    // type BKTreeNodeSet<RecordType> = HashSet<BKTreeNode<RecordType>>;
+
+    // #[derive(Debug, PartialEq, Eq, Hash)]
+    // struct BKTreeNodeSet<RecordType /*, EditDistanceCalc*/ >
+    //     where RecordType: PartialEq + Eq + Hash
+    //     /* where EditDistanceCalc: EditDistanceCalculator<ValueType> */ {
+    //         set: HashSet<BKTreeNode<RecordType /*, EditDistanceCalc*/ >>,
+    // }
+
+    // impl<RecordType: PartialEq + Eq + Hash /*, EditDistanceCalc*/ > BKTreeNodeSet<RecordType /*, EditDistanceCalc*/ > {
+    //     pub fn new() -> Self {
+    //         let hash_set = HashSet::<BKTreeNode<RecordType>>::new();
+    //         let ret_val = BKTreeNodeSet::<RecordType> { set: hash_set };
+    //         ret_val
+    //     }
+
+    //     // pub fn insert(&mut self, BKTreeNode<ValueType, RecordType, EditDistanceCalc> new_child) -> bool {
+    //     //     return self.set.insert(new_child);
+    //     // }
+    // }
+
+    #[derive(Debug)]
+    pub struct BKTreeNode<RecordType /*, EditDistanceCalc*/ >
+        where RecordType: PartialEq + Eq + Hash
         /*where EditDistanceCalc: EditDistanceCalculator<ValueType> */ {
-            value: &ValueType;
-            records_found_in: HashSet<RecordType>;
+            value: Rc<String>,
+            records_found_in: HashSet<Rc<RecordType>>,
             //edit_distance_calculator: &EditDistanceCalc;
             //max_distance_to_consider: EditDistance;
             // edit_distance_from_parent: EditDistance;
-            children: HashMap<EditDistance, BKTreeNodeSet<ValueType, RecordType /*, EditDistanceCalc*/ >>;
+            children: HashMap<EditDistance, BKTreeNode<RecordType>>,
     }
 
-    impl BKTreeNode<ValueType, RecordType /*, EditDistanceCalc*/ > {
-        pub fn new(value: &ValueType, first_record_found_in: &RecordType /*, edit_distance_calculator: &EditDistanceCalculator, max_distance_to_consider: EditDistance*/) -> Self {
-            let mut records_found_in = HashSet::new();
-            records_found_in.insert(first_record_found_in);
+    impl<RecordType: PartialEq + Eq + Hash /*, EditDistanceCalc*/ > BKTreeNode<RecordType /*, EditDistanceCalc*/ > {
+        pub fn new(value: Rc<String>, first_record_found_in: Rc<RecordType> /*, edit_distance_calculator: &EditDistanceCalculator, max_distance_to_consider: EditDistance*/) -> Self {
+            let mut records_found_in = HashSet::<Rc<RecordType>>::new();
+            //let records_found_in_borrow = (**records_found_in).borrow();
+            {
+                //let mut mut_records_found_in: RefMut<_> = records_found_in.borrow_mut();
+                //let unwrapped_record_found_in = Rc::try_unwrap(record_found_in).unwrap();
+                records_found_in.insert(first_record_found_in);
+            }
             let children = HashMap::new();
-            return BKTreeNode { value: value, records_found_in: records_found_in /*, edit_distance_calculator: edit_distance_calculator, max_distance_to_consider: max_distance_to_consider*/ , children: children };
+            let ret_val = BKTreeNode::<RecordType> { value: value, records_found_in: records_found_in /*, edit_distance_calculator: edit_distance_calculator, max_distance_to_consider: max_distance_to_consider*/ , children: children };
+            ret_val
+        }
+
+        fn recursive_insert<EditDistanceCalc: EditDistanceCalculator>(&mut self, value: Rc<String>, record_found_in: Rc<RecordType>, edit_distance_calculator: Rc<EditDistanceCalc>) -> bool {
+            let dist = edit_distance_calculator.get_edit_distance(&self.value, &value);
+            if dist == 0 {
+                assert!(&self.value == &value);
+                return self.records_found_in.insert(record_found_in);
+            } else if self.children.contains_key(&dist) {
+                let mut c = &mut *self.children.get_mut(&dist).unwrap();
+                return c.recursive_insert::<EditDistanceCalc>(Rc::clone(&value), Rc::clone(&record_found_in), Rc::clone(&edit_distance_calculator));
+            } else {
+                let new_node = BKTreeNode::new(value, record_found_in);
+                match self.children.insert(dist, new_node) {
+                    Some(new_node) => return true,
+                    None => return false,
+                }
+            }
         }
 
         // pub fn insert(&mut self, value: &ValueType, record_found_in: &RecordType) -> bool {
@@ -375,20 +633,26 @@ pub mod fuzzy_matching {
         // }
     }
 
-    impl Hash for BKTreeNode<ValueType, RecordType> {
+    impl<RecordType: PartialEq + Eq + Hash /*, EditDistanceCalc*/ > Hash for BKTreeNode<RecordType /*, EditDistanceCalc*/ > {
         fn hash<H: Hasher>(&self, state: &mut H) {
             self.value.hash(state);
-            self.records_found_in.hash(state);
+            // let records_found_in = &self.records_found_in;
+            // let records_found_in_deref = records_found_in.into_inner();
+            //let records_2 = *records_found_in_deref;
+            //let records_2 = Ref::map(records_found_in_deref, |r| &r.
+            for r in &self.records_found_in {
+                r.hash(state);
+            }
         }
     }
 
-    impl PartialEq for BKTreeNode<ValueType, RecordType> {
+    impl<RecordType: PartialEq + Eq + Hash /*, EditDistanceCalc*/ > PartialEq for BKTreeNode<RecordType /*, EditDistanceCalc*/ > {
         fn eq(&self, other: &Self) -> bool {
             self.value == other.value && self.records_found_in == other.records_found_in
         }
     }
 
-    impl Eq for BKTreeNode<ValueType, RecordType> {}
+    impl<RecordType: PartialEq + Eq + Hash /*, EditDistanceCalc*/ > Eq for BKTreeNode<RecordType /*, EditDistanceCalc*/ > {}
 }
 
 // TODO: Implement actual tests!
