@@ -471,7 +471,7 @@ pub mod fuzzy_matching {
     #[derive(Debug)]
     pub struct BKTree<RecordType, EditDistanceCalc>
         where RecordType: PartialEq + Eq + Hash,
-        EditDistanceCalc: EditDistanceCalculator {
+        EditDistanceCalc: EditDistanceCalculator + Sized {
             root_node: BKTreeNode<RecordType>,
             edit_distance_calculator: Rc<EditDistanceCalc>,
             max_distance_to_consider: EditDistance,
@@ -563,14 +563,22 @@ pub mod fuzzy_matching {
 
     impl<RecordType: PartialEq + Eq + Hash> Eq for BKTreeNode<RecordType> {}
 
+    #[derive(Debug)]
     pub struct OsaEditDistanceCalculator {}
 
-    lazy_static! {
-        pub static ref OSA_SINGLETON: OsaEditDistanceCalculator = {
+    impl OsaEditDistanceCalculator {
+        pub fn new() -> Self {
             let ret_val = OsaEditDistanceCalculator {};
             ret_val
-        };
+        }
     }
+
+    // lazy_static! {
+    //     pub static ref OSA_SINGLETON: OsaEditDistanceCalculator = {
+    //         let ret_val = OsaEditDistanceCalculator {};
+    //         ret_val
+    //     };
+    // }
 
     impl EditDistanceCalculator for OsaEditDistanceCalculator {
         fn algorithm_name(&self) -> &'static str {
@@ -582,13 +590,14 @@ pub mod fuzzy_matching {
         }
     }
 
+    #[derive(Debug)]
     pub struct LevenshteinEditDistanceCalculator {}
 
-    lazy_static! {
-        pub static ref LEVENSHTEIN_SINGLETON: LevenshteinEditDistanceCalculator = {
+    impl LevenshteinEditDistanceCalculator {
+        pub fn new() -> Self {
             let ret_val = LevenshteinEditDistanceCalculator {};
             ret_val
-        };
+        }
     }
 
     impl EditDistanceCalculator for LevenshteinEditDistanceCalculator {
@@ -600,6 +609,13 @@ pub mod fuzzy_matching {
             levenshtein(&item1.to_string(), &item2.to_string())
         }
     }
+
+    // lazy_static! {
+    //     pub static ref LEVENSHTEIN_SINGLETON: Rc<LevenshteinEditDistanceCalculator> = {
+    //         let ret_val = LevenshteinEditDistanceCalculator {};
+    //         Rc::new(ret_val)
+    //     };
+    // }
 }
 
 #[cfg(test)]
@@ -616,38 +632,38 @@ mod tests {
 
     #[test]
     fn test_osa_algorithm_name() {
-        let osa = &OSA_SINGLETON;
+        let osa = OsaEditDistanceCalculator::new();
         assert_eq!(osa.algorithm_name(), "Optimal String Alignment");
     }
 
     #[test]
     fn test_osa_get_edit_distance_1() {
-        let osa = &OSA_SINGLETON;
+        let osa = OsaEditDistanceCalculator::new();
         assert_eq!(osa.get_edit_distance(&String::from("blah"), &String::from("bleh")), 1);
     }
 
     #[test]
     fn test_osa_equal_strings() {
-        let osa = &OSA_SINGLETON;
+        let osa = OsaEditDistanceCalculator::new();
         let s = String::from("The quick brown fox jumps over the lazy dog");
         assert_eq!(osa.get_edit_distance(&s, &s), 0);
     }
 
     #[test]
     fn test_levenshtein_algorithm_name() {
-        let levenshtein = &LEVENSHTEIN_SINGLETON;
+        let levenshtein = LevenshteinEditDistanceCalculator::new();
         assert_eq!(levenshtein.algorithm_name(), "Levenshtein");
     }
 
     #[test]
     fn test_levenshtein_get_edit_distance_1() {
-        let levenshtein = &LEVENSHTEIN_SINGLETON;
+        let levenshtein = LevenshteinEditDistanceCalculator::new();
         assert_eq!(levenshtein.get_edit_distance(&String::from("blah"), &String::from("bleh")), 1);
     }
 
     #[test]
     fn test_levenshtein_equal_strings() {
-        let levenshtein = &LEVENSHTEIN_SINGLETON;
+        let levenshtein = LevenshteinEditDistanceCalculator::new();
         let s = String::from("The quick brown fox jumps over the lazy dog");
         assert_eq!(levenshtein.get_edit_distance(&s, &s), 0);
     }
@@ -721,11 +737,30 @@ mod tests {
         let work_phone = "555-6767".to_string();
         phone_numbers.insert("Work".to_string(), work_phone);
         let mut email_addresses = HashMap::<EmailAddressType, EmailAddress>::new();
-        let work_email = "hr@acmewidgets.com".to_string();
+        let work_email = "john.smith@acmewidgets.com".to_string();
         email_addresses.insert("Work".to_string(), work_email);
         let employers = HashSet::<Rc<Organization>>::new();
         let human = Human::new(name, ssn, birth_date, addresses, phone_numbers, email_addresses, employers);
         println!("Human: {:?}", human);
+    }
+
+    fn str_str_tuple(s: &str) -> (Rc<String>, Rc<String>) {
+        let value_found = Rc::new(s.to_string());
+        let record_found_in = Rc::clone(&value_found);
+        (value_found, record_found_in)
+    }
+
+    #[test]
+    fn test_creating_bktree_of_string_and_levenshtein() {
+        let ( first_str, first_record ) = str_str_tuple("bla");
+        let additional_strs = [ "blah", "bleh", "blih", "bloh", "bluh", "bloop", ];
+        let calc = Rc::new(LevenshteinEditDistanceCalculator::new());
+        let mut bktree = BKTree::<String, LevenshteinEditDistanceCalculator>::new(first_str, first_record, Rc::clone(&calc), 1);
+        for s in &additional_strs {
+            let ( this_str, this_record ) = str_str_tuple(s);
+            bktree.insert(this_str, this_record);
+        }
+        println!("{:?}", bktree);
     }
 
     // TODO: Add more tests
