@@ -3,6 +3,8 @@ name = "hippocratic_demographics"
 version = "0.1.0"
 authors = ["Stephen G Tuggy <sgt@stephengtuggy.com>"]
 edition = "2018"
+description = "Library for processing human demographic data, licensed under the Hippocratic License"
+license = "Hippocratic License 2.1"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
