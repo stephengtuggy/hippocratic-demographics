@@ -1,5 +1,4 @@
 pub mod human {
-    // use std::borrow::Borrow;
     use std::collections::{HashSet, HashMap};
     use std::fmt;
     use std::hash::{Hash, Hasher};
@@ -354,7 +353,6 @@ pub mod organization {
     use std::hash::{Hash, Hasher};
     use std::rc::Rc;
     // use std::str::FromStr;
-    // use unicode_segmentation::UnicodeSegmentation;
     use super::entity::*;
 
     #[derive(Debug, PartialEq, Eq)]
@@ -406,8 +404,6 @@ pub mod health_insurance {
 }
 
 pub mod fuzzy_matching {
-    // use std::borrow::{Borrow, BorrowMut};
-    // use std::cell::{Ref, RefCell, RefMut};
     use std::collections::{HashSet, HashMap};
     // use std::fmt;
     use std::hash::{Hash, Hasher};
@@ -439,88 +435,14 @@ pub mod fuzzy_matching {
 
     impl<RecordType: PartialEq + Eq + Hash, EditDistanceCalc: EditDistanceCalculator> BKTree<RecordType, EditDistanceCalc> {
         pub fn new(first_value: Rc<String>, first_record: Rc<RecordType>, edit_distance_calculator: Rc<EditDistanceCalc>, max_distance_to_consider: EditDistance) -> Self {
-            // let records_found_in = HashSet::new();
-            // records_found_in.insert(first_record);
-            let root_node = BKTreeNode::<RecordType>::new(first_value, first_record /*, edit_distance_calculator, max_distance_to_consider*/);
+            let root_node = BKTreeNode::<RecordType>::new(first_value, first_record);
             let ret_val = BKTree::<RecordType, EditDistanceCalc> { root_node: root_node, edit_distance_calculator: edit_distance_calculator, max_distance_to_consider: max_distance_to_consider };
             ret_val
         }
 
-        // pub fn insert(&mut self, value: Rc<String>, record_found_in: Rc<RecordType>) -> bool {
-        //     let mut cur_node = RefCell::new(&self.root_node);
-        //     //let cur_node_deref = (*cur_node).borrow();
-        //     let cur_node_value = &self.root_node.value;
-        //     let mut dist = self.edit_distance_calculator.get_edit_distance(&cur_node_value, &value);
-        //     //drop(cur_node_deref);
-        //     loop {
-        //         let cur_node_a = &cur_node;
-        //         let cur_node_a_deref = cur_node_a.borrow();
-        //         let children = &cur_node_a_deref.children;
-        //         let children_deref = children.borrow();
-        //         let contains_key = children_deref.contains_key(&dist);
-        //         //let children_deref: Ref<HashMap<EditDistance, BKTreeNode<RecordType>>> = (**children).borrow();
-        //         if contains_key {
-        //             let new_node = BKTreeNode::new(value, record_found_in);
-        //             // let new_children_hash_set = BKTreeNodeSet::new();
-        //             // new_children_hash_set.insert(new_node).unwrap();
-        //             //let borrow1 = (*cur_node).borrow();
-        //             //let c = borrow1.children;
-        //             let mut mut_map: RefMut<_> = children.borrow_mut();
-        //             match mut_map.insert(dist, new_node) {
-        //                 Some(new_node) => return true,
-        //                 None => return false,
-        //             }
-        //         }
-        //         if dist == 0 {
-        //             assert!((cur_node_a_deref.value).eq(&value));
-        //             let records_found_in = &cur_node_a_deref.records_found_in;
-        //             //let records_found_in_deref = records_found_in.into_inner();
-        //             //let records_found_in_borrow = (**records_found_in).borrow();
-        //             let mut mut_records_found_in: RefMut<_> = records_found_in.borrow_mut();
-        //             //let unwrapped_record_found_in = Rc::try_unwrap(record_found_in).unwrap();
-        //             return mut_records_found_in.insert(record_found_in);
-        //         }
-        //         //let borrow1 = cur_node.borrow();
-        //         //let c = borrow_a.children;
-        //         //let mut mut_map: RefMut<_> = (**children).borrow_mut();
-        //         // let cur_node_ab = Rc::clone(&cur_node_a);
-        //         // let cur_node_ab_deref = (*cur_node_ab).borrow();
-        //         // let children_ab = &cur_node_ab_deref.children;
-        //         // let children_ab_deref = (**children_ab).borrow();
-        //         //let children_ab_deref_2 = children_ab_deref.borrow();
-        //         //let children_ab_borrow: Ref<HashMap<EditDistance, BKTreeNode<RecordType>>> = (**children_ab).borrow();
-        //         //let children_ab_borrow_clone = Ref::map(&children_ab_borrow, |);
-        //         //drop(cur_node_a);
-        //         //let children_b_ptr = (*children_b).borrow();
-        //         cur_node.replace(&children_deref[&dist]);
-        //         let cur_node_b = &cur_node;
-        //         let cur_node_b_deref = cur_node_b.into_inner();
-        //         dist = self.edit_distance_calculator.get_edit_distance(&cur_node_b_deref.value, &value);
-        //         //drop(children_borrow_b);
-        //         //drop(cur_node_b);
-        //         //drop(children_deref);
-        //     }
-        // }
-
         pub fn insert(&mut self, value: Rc<String>, record_found_in: Rc<RecordType>) -> bool {
             self.root_node.recursive_insert(Rc::clone(&value), Rc::clone(&record_found_in), Rc::clone(&self.edit_distance_calculator))
         }
-
-        // fn recursive_insert(&mut self, node: &mut BKTreeNode<RecordType>, value: Rc<String>, record_found_in: Rc<RecordType>) -> bool {
-        //     let dist = self.edit_distance_calculator.get_edit_distance(&node.value, &value);
-        //     if dist == 0 {
-        //         assert!(&node.value == &value);
-        //         return node.records_found_in.insert(record_found_in);
-        //     } else if node.children.contains_key(&dist) {
-        //         return self.recursive_insert(&mut node.children.get&dist], Rc::clone(&value), Rc::clone(&record_found_in));
-        //     } else {
-        //         let new_node = BKTreeNode::new(value, record_found_in);
-        //         match node.children.insert(dist, new_node) {
-        //             Some(new_node) => return true,
-        //             None => return false,
-        //         }
-        //     }
-        // }
 
         pub fn search(&self, value: Rc<String>, record_found_in: Rc<RecordType>) -> Vec<(Rc<String>, Rc<RecordType>)> {
             let mut rtn = Vec::new();
@@ -529,7 +451,6 @@ pub mod fuzzy_matching {
         }
 
         fn recursive_search(&self, node: &BKTreeNode<RecordType>, value: Rc<String>, record_found_in: Rc<RecordType>, rtn: &mut Vec<(Rc<String>, Rc<RecordType>)>) {
-            //let node_deref = node.into_inner();
             let cur_edit_distance = self.edit_distance_calculator.get_edit_distance(&node.value, &value);
             let min_distance = cur_edit_distance - self.max_distance_to_consider;
             let max_distance = cur_edit_distance + self.max_distance_to_consider;
@@ -539,9 +460,6 @@ pub mod fuzzy_matching {
             let children = &node.children;
             for k in children.keys() {
                 if (k >= &min_distance) && (k <= &max_distance) {
-                    // let b = (*node).borrow();
-                    // let c = b.children;
-                    // let map = (*c).borrow();
                     let child_node = &children[k];
                     self.recursive_search(child_node, Rc::clone(&value), Rc::clone(&record_found_in), rtn);
                 }
@@ -549,50 +467,20 @@ pub mod fuzzy_matching {
         }
     }
 
-    // type BKTreeNodeSet<RecordType> = HashSet<BKTreeNode<RecordType>>;
-
-    // #[derive(Debug, PartialEq, Eq, Hash)]
-    // struct BKTreeNodeSet<RecordType /*, EditDistanceCalc*/ >
-    //     where RecordType: PartialEq + Eq + Hash
-    //     /* where EditDistanceCalc: EditDistanceCalculator<ValueType> */ {
-    //         set: HashSet<BKTreeNode<RecordType /*, EditDistanceCalc*/ >>,
-    // }
-
-    // impl<RecordType: PartialEq + Eq + Hash /*, EditDistanceCalc*/ > BKTreeNodeSet<RecordType /*, EditDistanceCalc*/ > {
-    //     pub fn new() -> Self {
-    //         let hash_set = HashSet::<BKTreeNode<RecordType>>::new();
-    //         let ret_val = BKTreeNodeSet::<RecordType> { set: hash_set };
-    //         ret_val
-    //     }
-
-    //     // pub fn insert(&mut self, BKTreeNode<ValueType, RecordType, EditDistanceCalc> new_child) -> bool {
-    //     //     return self.set.insert(new_child);
-    //     // }
-    // }
-
     #[derive(Debug)]
-    pub struct BKTreeNode<RecordType /*, EditDistanceCalc*/ >
-        where RecordType: PartialEq + Eq + Hash
-        /*where EditDistanceCalc: EditDistanceCalculator<ValueType> */ {
+    pub struct BKTreeNode<RecordType>
+        where RecordType: PartialEq + Eq + Hash {
             value: Rc<String>,
             records_found_in: HashSet<Rc<RecordType>>,
-            //edit_distance_calculator: &EditDistanceCalc;
-            //max_distance_to_consider: EditDistance;
-            // edit_distance_from_parent: EditDistance;
             children: HashMap<EditDistance, BKTreeNode<RecordType>>,
     }
 
-    impl<RecordType: PartialEq + Eq + Hash /*, EditDistanceCalc*/ > BKTreeNode<RecordType /*, EditDistanceCalc*/ > {
-        pub fn new(value: Rc<String>, first_record_found_in: Rc<RecordType> /*, edit_distance_calculator: &EditDistanceCalculator, max_distance_to_consider: EditDistance*/) -> Self {
+    impl<RecordType: PartialEq + Eq + Hash> BKTreeNode<RecordType> {
+        pub fn new(value: Rc<String>, first_record_found_in: Rc<RecordType>) -> Self {
             let mut records_found_in = HashSet::<Rc<RecordType>>::new();
-            //let records_found_in_borrow = (**records_found_in).borrow();
-            {
-                //let mut mut_records_found_in: RefMut<_> = records_found_in.borrow_mut();
-                //let unwrapped_record_found_in = Rc::try_unwrap(record_found_in).unwrap();
-                records_found_in.insert(first_record_found_in);
-            }
+            records_found_in.insert(first_record_found_in);
             let children = HashMap::new();
-            let ret_val = BKTreeNode::<RecordType> { value: value, records_found_in: records_found_in /*, edit_distance_calculator: edit_distance_calculator, max_distance_to_consider: max_distance_to_consider*/ , children: children };
+            let ret_val = BKTreeNode::<RecordType> { value: value, records_found_in: records_found_in, children: children };
             ret_val
         }
 
@@ -612,47 +500,24 @@ pub mod fuzzy_matching {
                 }
             }
         }
-
-        // pub fn insert(&mut self, value: &ValueType, record_found_in: &RecordType) -> bool {
-        //     let cur_edit_distance = self.edit_distance_calculator.get_edit_distance(&self.value, &value);
-        //     if cur_edit_distance == 0 {
-        //         assert!(self.value == value);
-        //         return self.records_found_in.insert(record_found_in);
-        //     } else {
-        //         let new_node = BKTreeNode::new(value, record_found_in, &self.edit_distance_calculator, &self.max_distance_to_consider);
-        //         let min_distance = cur_edit_distance - &self.max_distance_to_consider;
-        //         let max_distance = cur_edit_distance + &self.max_distance_to_consider;
-        //         if let Some(children_at_this_edit_distance: BKTreeNodeSet<ValueType, RecordType, EditDistanceCalc>) = self.children.get_mut(&cur_edit_distance) {
-        //             return children_at_this_edit_distance.insert(new_node);
-        //         } else {
-        //             let new_children_hash_set = BKTreeNodeSet<ValueType, RecordType, EditDistanceCalc>::new();
-        //             assert!(new_children_hash_set.insert(new_node));
-        //             return self.children.insert(cur_edit_distance, new_children_hash_set);
-        //         }
-        //     }
-        // }
     }
 
-    impl<RecordType: PartialEq + Eq + Hash /*, EditDistanceCalc*/ > Hash for BKTreeNode<RecordType /*, EditDistanceCalc*/ > {
+    impl<RecordType: PartialEq + Eq + Hash> Hash for BKTreeNode<RecordType> {
         fn hash<H: Hasher>(&self, state: &mut H) {
             self.value.hash(state);
-            // let records_found_in = &self.records_found_in;
-            // let records_found_in_deref = records_found_in.into_inner();
-            //let records_2 = *records_found_in_deref;
-            //let records_2 = Ref::map(records_found_in_deref, |r| &r.
             for r in &self.records_found_in {
                 r.hash(state);
             }
         }
     }
 
-    impl<RecordType: PartialEq + Eq + Hash /*, EditDistanceCalc*/ > PartialEq for BKTreeNode<RecordType /*, EditDistanceCalc*/ > {
+    impl<RecordType: PartialEq + Eq + Hash> PartialEq for BKTreeNode<RecordType> {
         fn eq(&self, other: &Self) -> bool {
             self.value == other.value && self.records_found_in == other.records_found_in
         }
     }
 
-    impl<RecordType: PartialEq + Eq + Hash /*, EditDistanceCalc*/ > Eq for BKTreeNode<RecordType /*, EditDistanceCalc*/ > {}
+    impl<RecordType: PartialEq + Eq + Hash> Eq for BKTreeNode<RecordType> {}
 }
 
 // TODO: Implement actual tests!
