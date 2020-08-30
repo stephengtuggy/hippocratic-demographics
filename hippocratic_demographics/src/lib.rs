@@ -9,7 +9,7 @@ pub mod human {
     use std::str::FromStr;
     use super::option_date_time::OptionDate;
     use super::entity::*;
-    // use super::organization::Organization;
+    use super::organization::Organization;
 
     pub type SSN = TIN;
 
@@ -21,8 +21,15 @@ pub mod human {
         addresses: HashMap<AddressType, Address>,
         phone_numbers: HashMap<PhoneNumberType, PhoneNumber>,
         email_addresses: HashMap<EmailAddressType, EmailAddress>,
-        employers: HashSet<Rc<String>>,                       // employers: HashSet<Organization>,
+        employers: HashSet<Rc<Organization>>,
         // TODO: Methods? Any more fields?
+    }
+
+    impl Human {
+        pub fn new(name: HumanName, ssn: SSN, birth_date: OptionDate, addresses: HashMap<AddressType, Address>, phone_numbers: HashMap<PhoneNumberType, PhoneNumber>, email_addresses: HashMap<EmailAddressType, EmailAddress>, employers: HashSet<Rc<Organization>>) -> Self {
+            let ret_val = Human { name: name, ssn: ssn, birth_date: birth_date, addresses: addresses, phone_numbers: phone_numbers, email_addresses: email_addresses, employers: employers };
+            ret_val
+        }
     }
 
     impl Hash for Human {
@@ -327,7 +334,7 @@ pub mod entity {
         // TODO: Implement better parsing
         fn from_str(s: &str) -> AddressResult {
             lazy_static! {
-                static ref RE: Regex = Regex::new(r"^([^,]+), *([^,]+), *([[:alpha:]]{2}) *(\d{5}), *([^,])$").unwrap();
+                static ref RE: Regex = Regex::new(r"^([^,]+), +([^,]+), +([[:alpha:]]{2}) +(\d{5}), +([^,]+)$").unwrap();
             }
             if RE.is_match(s) {
                 let caps = RE.captures(s).unwrap();
@@ -369,6 +376,13 @@ pub mod organization {
         addresses: HashMap<AddressType, Address>,
         phone_numbers: HashMap<PhoneNumberType, PhoneNumber>,
         email_addresses: HashMap<EmailAddressType, EmailAddress>,
+    }
+
+    impl Organization {
+        pub fn new(name: Rc<String>, tin_number: TIN, addresses: HashMap<AddressType, Address>, phone_numbers: HashMap<PhoneNumberType, PhoneNumber>, email_addresses: HashMap<EmailAddressType, EmailAddress>) -> Self {
+            let ret_val = Organization { name: name, tin_number: tin_number, addresses: addresses, phone_numbers: phone_numbers, email_addresses: email_addresses };
+            ret_val
+        }
     }
 
     impl Hash for Organization {
@@ -568,6 +582,9 @@ pub mod fuzzy_matching {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::{HashSet, HashMap};
+    use std::rc::Rc;
+    use std::str::FromStr;
     use super::entity::*;
     use super::fuzzy_matching::*;
     use super::health_insurance::*;
@@ -611,6 +628,82 @@ mod tests {
         let levenshtein = &LEVENSHTEIN_SINGLETON;
         let s = String::from("The quick brown fox jumps over the lazy dog");
         assert_eq!(levenshtein.get_edit_distance(&s, &s), 0);
+    }
+
+    #[test]
+    fn test_creating_human_name() {
+        let name = HumanName::from_str("Jane Doe").unwrap();
+        println!("Name: {}", name);
+    }
+
+    #[test]
+    fn test_creating_ssn() {
+        let ssn = SSN::from_str("123-45-6789").unwrap();
+        println!("SSN: {}", ssn);
+    }
+
+    #[test]
+    fn test_creating_option_date() {
+        let option_date = OptionDate::from_str("1970-01-01").unwrap();
+        println!("Date: {}", option_date);
+    }
+
+    #[test]
+    fn test_creating_address() {
+        let address = Address::from_str("123 Main St, Anytown, NJ 01234, United States").unwrap();
+        println!("Address: {}", address);
+    }
+
+    #[test]
+    fn test_creating_phone_number() {
+        let phone_number = "+1 (888) 555-1212".to_string();
+        println!("Phone number: {}", phone_number);
+    }
+
+    #[test]
+    fn test_creating_email_address() {
+        let email_address = "jane.doe@example.com".to_string();
+        println!("Email address: {}", email_address);
+    }
+
+    #[test]
+    fn test_creating_organization() {
+        let name = Rc::new("ACME Widgets Inc.".to_string());
+        let tin_number = TIN::from_str("987-65-4321").unwrap();
+        let mut addresses = HashMap::<AddressType, Address>::new();
+        let work_address = Address::from_str("567 Main St, Anytown, NJ 01234, United States").unwrap();
+        addresses.insert("Main".to_string(), work_address);
+        let mut phone_numbers = HashMap::<PhoneNumberType, PhoneNumber>::new();
+        let work_phone = "555-6767".to_string();
+        phone_numbers.insert("Main".to_string(), work_phone);
+        let mut email_addresses = HashMap::<EmailAddressType, EmailAddress>::new();
+        let work_email = "hr@acmewidgets.com".to_string();
+        email_addresses.insert("Main".to_string(), work_email);
+        let organization = Organization::new(name, tin_number, addresses, phone_numbers, email_addresses);
+        println!("Organization: {:?}", organization);
+    }
+
+    #[test]
+    fn test_creating_human_record() {
+        let name = HumanName::from_str("John Smith").unwrap();
+        let ssn = SSN::from_str("578-90-1234").unwrap();
+        let birth_date = OptionDate::from_str("1980-01-01").unwrap();
+        let mut addresses = HashMap::<AddressType, Address>::new();
+        let home_address = Address::from_str("123 Main St, Anytown, NJ 01234, United States").unwrap();
+        addresses.insert("Home".to_string(), home_address);
+        let work_address = Address::from_str("567 Main St, Anytown, NJ 01234, United States").unwrap();
+        addresses.insert("Work".to_string(), work_address);
+        let mut phone_numbers = HashMap::<PhoneNumberType, PhoneNumber>::new();
+        let home_phone = "555-1212".to_string();
+        phone_numbers.insert("Home".to_string(), home_phone);
+        let work_phone = "555-6767".to_string();
+        phone_numbers.insert("Work".to_string(), work_phone);
+        let mut email_addresses = HashMap::<EmailAddressType, EmailAddress>::new();
+        let work_email = "hr@acmewidgets.com".to_string();
+        email_addresses.insert("Work".to_string(), work_email);
+        let employers = HashSet::<Rc<Organization>>::new();
+        let human = Human::new(name, ssn, birth_date, addresses, phone_numbers, email_addresses, employers);
+        println!("Human: {:?}", human);
     }
 
     // TODO: Add more tests
