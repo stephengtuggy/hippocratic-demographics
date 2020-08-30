@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate lazy_static;
+
 pub mod human {
     use std::collections::{HashSet, HashMap};
     use std::fmt;
@@ -135,10 +138,11 @@ pub mod option_date_time {
         
         // TODO: Allow for more flexible parsing
         fn from_str(s: &str) -> OptionDateResult {
-            // TODO: Make this lazy_static
-            let re = Regex::new(r"^(\d{4})-(\d{2})-(\d{2})$").unwrap();
-            if re.is_match(s) {
-                let caps = re.captures(s).unwrap();
+            lazy_static! {
+                static ref RE: Regex = Regex::new(r"^(\d{4})-(\d{2})-(\d{2})$").unwrap();
+            }
+            if RE.is_match(s) {
+                let caps = RE.captures(s).unwrap();
                 let year: i64 = caps[1].parse().unwrap();
                 let month: u8 = caps[2].parse().unwrap();
                 let day: u8 = caps[3].parse().unwrap();
@@ -175,10 +179,11 @@ pub mod option_date_time {
 
         // TODO: Allow for more flexible parsing
         fn from_str(s: &str) -> OptionTimeResult {
-            // TODO: Make this lazy_static
-            let re = Regex::new(r"^(\d{2}):(\d{2}):(\d{2}):(\d{9})$").unwrap();
-            if re.is_match(s) {
-                let caps = re.captures(s).unwrap();
+            lazy_static! {
+                static ref RE: Regex = Regex::new(r"^(\d{2}):(\d{2}):(\d{2}):(\d{9})$").unwrap();
+            }
+            if RE.is_match(s) {
+                let caps = RE.captures(s).unwrap();
                 let hour: u8 = caps[1].parse().unwrap();
                 let minute: u8 = caps[2].parse().unwrap();
                 let second: u8 = caps[3].parse().unwrap();
@@ -214,10 +219,11 @@ pub mod option_date_time {
 
         // TODO: Allow for more flexible parsing
         fn from_str(s: &str) -> OptionDateTimeResult {
-            // TODO: Make this lazy_static
-            let re = Regex::new(r"^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2}:\d{9})$").unwrap();
-            if re.is_match(s) {
-                let caps = re.captures(s).unwrap();
+            lazy_static! {
+                static ref RE: Regex = Regex::new(r"^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2}:\d{9})$").unwrap();
+            }
+            if RE.is_match(s) {
+                let caps = RE.captures(s).unwrap();
                 let date_part: OptionDate = caps[1].parse().unwrap();
                 let time_part: OptionTime = caps[2].parse().unwrap();
                 let ret_val = OptionDateTime { date_part: date_part, time_part: time_part };
@@ -320,10 +326,11 @@ pub mod entity {
         
         // TODO: Implement better parsing
         fn from_str(s: &str) -> AddressResult {
-            // TODO: Make this lazy_static
-            let re = Regex::new(r"^([^,]+), *([^,]+), *([[:alpha:]]{2}) *(\d{5}), *([^,])$").unwrap();
-            if re.is_match(s) {
-                let caps = re.captures(s).unwrap();
+            lazy_static! {
+                static ref RE: Regex = Regex::new(r"^([^,]+), *([^,]+), *([[:alpha:]]{2}) *(\d{5}), *([^,])$").unwrap();
+            }
+            if RE.is_match(s) {
+                let caps = RE.captures(s).unwrap();
                 let line_1 = Rc::new(caps[1].to_string());
                 let line_2 = Rc::new("".to_string());
                 let line_3 = Rc::new("".to_string());
@@ -409,19 +416,20 @@ pub mod fuzzy_matching {
     use std::hash::{Hash, Hasher};
     use std::rc::Rc;
     // use std::str::FromStr;
+    use strsim::*;
 
     pub type Similarity = f64;
     pub type EditDistance = usize;
 
     pub trait SimilarityCalculator {
         fn algorithm_name(&self) -> &'static str;
-        fn get_similarity(&self, item1: Rc<String>, item2: Rc<String>) -> Similarity;
+        fn get_similarity(&self, item1: &String, item2: &String) -> Similarity;
     }
 
     pub trait EditDistanceCalculator {
         fn algorithm_name(&self) -> &'static str;
         fn get_edit_distance(&self, item1: &String, item2: &String) -> EditDistance;
-        fn max_possible_edit_distance(&self, item1: &String, item2: &String) -> EditDistance;
+        // fn max_possible_edit_distance(&self, item1: &String, item2: &String) -> EditDistance;
     }
 
     #[derive(Debug)]
@@ -518,13 +526,54 @@ pub mod fuzzy_matching {
     }
 
     impl<RecordType: PartialEq + Eq + Hash> Eq for BKTreeNode<RecordType> {}
+
+    pub struct OsaEditDistanceCalculator {}
+
+    lazy_static! {
+        pub static ref OSA_SINGLETON: OsaEditDistanceCalculator = {
+            let ret_val = OsaEditDistanceCalculator {};
+            ret_val
+        };
+    }
+
+    impl EditDistanceCalculator for OsaEditDistanceCalculator {
+        fn algorithm_name(&self) -> &'static str {
+            return "Optimal String Alignment";
+        }
+
+        fn get_edit_distance(&self, item1: &String, item2: &String) -> EditDistance {
+            osa_distance(&item1.to_string(), &item2.to_string())
+        }
+    }
 }
 
-// TODO: Implement actual tests!
 #[cfg(test)]
 mod tests {
+    use super::entity::*;
+    use super::fuzzy_matching::*;
+    use super::health_insurance::*;
+    use super::human::*;
+    use super::option_date_time::*;
+    use super::organization::*;
+
     #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    fn test_osa_algorithm_name() {
+        let osa = &OSA_SINGLETON;
+        assert_eq!(osa.algorithm_name(), "Optimal String Alignment");
     }
+
+    #[test]
+    fn test_osa_get_edit_distance_1() {
+        let osa = &OSA_SINGLETON;
+        assert_eq!(osa.get_edit_distance(&String::from("blah"), &String::from("bleh")), 1);
+    }
+
+    #[test]
+    fn test_osa_equal_strings() {
+        let osa = &OSA_SINGLETON;
+        let s = String::from("The quick brown fox jumps over the lazy dog");
+        assert_eq!(osa.get_edit_distance(&s, &s), 0);
+    }
+
+    // TODO: Add more tests
 }
