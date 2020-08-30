@@ -774,12 +774,70 @@ mod tests {
         let (first_value, first_record) = get_value_and_record_for_human_name(HumanName::from_str("Jane Doe").unwrap());
         let addl_names = [ "John Doe", "Jon Doe", "Jane Fonda", "Joe Bloe", "Adam Smith" ];
         let calc = Rc::new(OsaEditDistanceCalculator::new());
-        let mut bktree = BKTree::new(first_value, first_record, Rc::clone(&calc), 1);
+        let mut bktree = BKTree::new(first_value, first_record, Rc::clone(&calc), 2);
         for n in &addl_names {
             let (this_value, this_record) = get_value_and_record_for_human_name(HumanName::from_str(n).unwrap());
             bktree.insert(this_value, this_record);
         }
         println!("{:?}", bktree);
+    }
+
+    fn get_value_and_record_for_human_by_name(human: Rc<Human>) -> (Rc<String>, Rc<Human>) {
+        let value_found = Rc::new(human.get_name().to_string());
+        let record_found_in = Rc::clone(&human);
+        (value_found, record_found_in)
+    }
+
+    #[test]
+    fn test_bktree_of_human_by_name_and_levenshtein() {
+        let persons_name = HumanName::from_str("John Smith").unwrap();
+        let ssn = SSN::from_str("578-90-1234").unwrap();
+        let birth_date = OptionDate::from_str("1980-01-01").unwrap();
+        let mut persons_addresses = HashMap::<AddressType, Address>::new();
+        let home_address = Address::from_str("123 Main St, Anytown, NJ 01234, United States").unwrap();
+        persons_addresses.insert("Home".to_string(), home_address);
+        let work_address = Address::from_str("567 Main St, Anytown, NJ 01234, United States").unwrap();
+        persons_addresses.insert("Work".to_string(), work_address);
+        let mut persons_phone_numbers = HashMap::<PhoneNumberType, PhoneNumber>::new();
+        let home_phone = "555-1212".to_string();
+        persons_phone_numbers.insert("Home".to_string(), home_phone);
+        let work_phone = "555-6767".to_string();
+        persons_phone_numbers.insert("Work".to_string(), work_phone);
+        let mut persons_email_addresses = HashMap::<EmailAddressType, EmailAddress>::new();
+        let work_email = "john.smith@acmewidgets.com".to_string();
+        persons_email_addresses.insert("Work".to_string(), work_email);
+        let mut employers = HashSet::<Rc<Organization>>::new();
+
+        let employers_name = Rc::new("ACME Widgets Inc.".to_string());
+        let tin_number = TIN::from_str("987-65-4321").unwrap();
+        let mut employers_addresses = HashMap::<AddressType, Address>::new();
+        let employers_main_address = Address::from_str("567 Main St, Anytown, NJ 01234, United States").unwrap();
+        employers_addresses.insert("Main".to_string(), employers_main_address);
+        let mut employers_phone_numbers = HashMap::<PhoneNumberType, PhoneNumber>::new();
+        let employers_main_phone = "555-6767".to_string();
+        employers_phone_numbers.insert("Main".to_string(), employers_main_phone);
+        let mut employers_email_addresses = HashMap::<EmailAddressType, EmailAddress>::new();
+        let employers_hr_email = "hr@acmewidgets.com".to_string();
+        employers_email_addresses.insert("HR".to_string(), employers_hr_email);
+        let organization = Organization::new(employers_name, tin_number, employers_addresses, employers_phone_numbers, employers_email_addresses);
+        employers.insert(Rc::new(organization));
+
+        let human = Human::new(persons_name, ssn, birth_date, persons_addresses, persons_phone_numbers, persons_email_addresses, employers);
+        let (first_value, first_record) = get_value_and_record_for_human_by_name(Rc::new(human));
+        let calc = Rc::new(LevenshteinEditDistanceCalculator::new());
+        let mut bktree = BKTree::new(first_value, first_record, Rc::clone(&calc), 2);
+
+        let second_persons_name = HumanName::from_str("Jane Doe").unwrap();
+        let second_persons_ssn = SSN::from_str("678-90-1234").unwrap();
+        let second_persons_birth_date = OptionDate::from_str("1980-01-02").unwrap();
+        let second_persons_addresses = HashMap::<AddressType, Address>::new();
+        let second_persons_phones = HashMap::<PhoneNumberType, PhoneNumber>::new();
+        let second_persons_emails = HashMap::<EmailAddressType, EmailAddress>::new();
+        let second_persons_employers = HashSet::<Rc<Organization>>::new();
+
+        let human2 = Human::new(second_persons_name, second_persons_ssn, second_persons_birth_date, second_persons_addresses, second_persons_phones, second_persons_emails, second_persons_employers);
+        let (second_value, second_record) = get_value_and_record_for_human_by_name(Rc::new(human2));
+        bktree.insert(second_value, second_record);
     }
 
     // TODO: Add more tests
