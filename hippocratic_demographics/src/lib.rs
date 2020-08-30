@@ -22,7 +22,7 @@ pub mod human {
         phone_numbers: HashMap<PhoneNumberType, PhoneNumber>,
         email_addresses: HashMap<EmailAddressType, EmailAddress>,
         employers: HashSet<Rc<Organization>>,
-        // TODO: Methods? Any more fields?
+        // TODO: Any more fields?
     }
 
     impl Human {
@@ -30,6 +30,20 @@ pub mod human {
             let ret_val = Human { name: name, ssn: ssn, birth_date: birth_date, addresses: addresses, phone_numbers: phone_numbers, email_addresses: email_addresses, employers: employers };
             ret_val
         }
+
+        pub fn get_name(&self) -> &HumanName {
+            &self.name
+        }
+
+        pub fn get_ssn(&self) -> &SSN {
+            &self.ssn
+        }
+
+        pub fn get_birth_date(&self) -> &OptionDate {
+            &self.birth_date
+        }
+
+        // TODO: Add more property accessors
     }
 
     impl Hash for Human {
@@ -382,6 +396,14 @@ pub mod organization {
         pub fn new(name: Rc<String>, tin_number: TIN, addresses: HashMap<AddressType, Address>, phone_numbers: HashMap<PhoneNumberType, PhoneNumber>, email_addresses: HashMap<EmailAddressType, EmailAddress>) -> Self {
             let ret_val = Organization { name: name, tin_number: tin_number, addresses: addresses, phone_numbers: phone_numbers, email_addresses: email_addresses };
             ret_val
+        }
+
+        pub fn get_name(&self) -> Rc<String> {
+            Rc::clone(&self.name)
+        }
+
+        pub fn get_tin_number(&self) -> &TIN {
+            &self.tin_number
         }
     }
 
