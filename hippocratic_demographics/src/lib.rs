@@ -545,6 +545,25 @@ pub mod fuzzy_matching {
             osa_distance(&item1.to_string(), &item2.to_string())
         }
     }
+
+    pub struct LevenshteinEditDistanceCalculator {}
+
+    lazy_static! {
+        pub static ref LEVENSHTEIN_SINGLETON: LevenshteinEditDistanceCalculator = {
+            let ret_val = LevenshteinEditDistanceCalculator {};
+            ret_val
+        };
+    }
+
+    impl EditDistanceCalculator for LevenshteinEditDistanceCalculator {
+        fn algorithm_name(&self) -> &'static str {
+            return "Levenshtein";
+        }
+
+        fn get_edit_distance(&self, item1: &String, item2: &String) -> EditDistance {
+            levenshtein(&item1.to_string(), &item2.to_string())
+        }
+    }
 }
 
 #[cfg(test)]
@@ -573,6 +592,25 @@ mod tests {
         let osa = &OSA_SINGLETON;
         let s = String::from("The quick brown fox jumps over the lazy dog");
         assert_eq!(osa.get_edit_distance(&s, &s), 0);
+    }
+
+    #[test]
+    fn test_levenshtein_algorithm_name() {
+        let levenshtein = &LEVENSHTEIN_SINGLETON;
+        assert_eq!(levenshtein.algorithm_name(), "Levenshtein");
+    }
+
+    #[test]
+    fn test_levenshtein_get_edit_distance_1() {
+        let levenshtein = &LEVENSHTEIN_SINGLETON;
+        assert_eq!(levenshtein.get_edit_distance(&String::from("blah"), &String::from("bleh")), 1);
+    }
+
+    #[test]
+    fn test_levenshtein_equal_strings() {
+        let levenshtein = &LEVENSHTEIN_SINGLETON;
+        let s = String::from("The quick brown fox jumps over the lazy dog");
+        assert_eq!(levenshtein.get_edit_distance(&s, &s), 0);
     }
 
     // TODO: Add more tests
