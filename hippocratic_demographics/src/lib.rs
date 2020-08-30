@@ -763,5 +763,24 @@ mod tests {
         println!("{:?}", bktree);
     }
 
+    fn get_value_and_record_for_human_name(name: HumanName) -> (Rc<String>, Rc<HumanName>) {
+        let value_found = Rc::new(name.to_string());
+        let record_found_in = Rc::new(name);
+        (value_found, record_found_in)
+    }
+
+    #[test]
+    fn test_creating_bktree_of_human_name_and_osa() {
+        let (first_value, first_record) = get_value_and_record_for_human_name(HumanName::from_str("Jane Doe").unwrap());
+        let addl_names = [ "John Doe", "Jon Doe", "Jane Fonda", "Joe Bloe", "Adam Smith" ];
+        let calc = Rc::new(OsaEditDistanceCalculator::new());
+        let mut bktree = BKTree::new(first_value, first_record, Rc::clone(&calc), 1);
+        for n in &addl_names {
+            let (this_value, this_record) = get_value_and_record_for_human_name(HumanName::from_str(n).unwrap());
+            bktree.insert(this_value, this_record);
+        }
+        println!("{:?}", bktree);
+    }
+
     // TODO: Add more tests
 }
