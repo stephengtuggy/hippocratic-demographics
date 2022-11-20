@@ -11,7 +11,7 @@ updates:
       - dependency-type: "all"
 
   - package-ecosystem: "cargo"
-    directory: "/"
+    directory: "/hippocratic_demographics"
     schedule:
       interval: "weekly"
     allow:
