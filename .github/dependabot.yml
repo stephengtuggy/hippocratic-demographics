@@ -11,9 +11,12 @@ updates:
       - dependency-type: "all"
 
   - package-ecosystem: "cargo"
-    directory: "/hippocratic_demographics"
+    directory: "/hippocratic_demographics/"
     schedule:
       interval: "weekly"
     allow:
       # Allow both direct and indirect updates for all packages
       - dependency-type: "all"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
