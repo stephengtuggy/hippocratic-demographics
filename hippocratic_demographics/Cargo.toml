@@ -1,6 +1,6 @@
 [package]
 name = "hippocratic_demographics"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Stephen G Tuggy <sgt@stephengtuggy.com>"]
 edition = "2018"
 description = "Library for processing human demographic data, licensed under the Hippocratic License"
@@ -9,7 +9,7 @@ license = "Hippocratic License 2.1"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-lazy_static = "1.4.0"
-regex = "1"
-strsim = "0.11"
-unicode-segmentation = "1.6.0"
+lazy_static = "1.5.1"
+regex = "1.13.1"
+strsim = "0.11.1"
+unicode-segmentation = "1.13.3"
