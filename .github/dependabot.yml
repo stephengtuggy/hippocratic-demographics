@@ -20,5 +20,5 @@ updates:
       - dependency-type: "all"
     ignore:
       - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
+        update-types: [ "version-update:semver-major" ]
     open-pull-requests-limit: 3
