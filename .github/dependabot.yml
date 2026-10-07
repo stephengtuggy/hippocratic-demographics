@@ -9,6 +9,7 @@ updates:
     allow:
       # Allow both direct and indirect updates for all packages
       - dependency-type: "all"
+    open-pull-requests-limit: 3
 
   - package-ecosystem: "cargo"
     directory: "/hippocratic_demographics/"
@@ -20,3 +21,4 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+    open-pull-requests-limit: 3
