@@ -534,12 +534,12 @@ pub mod fuzzy_matching {
                 assert!(&self.value == &value);
                 return self.records_found_in.insert(record_found_in);
             } else if self.children.contains_key(&dist) {
-                let mut c = &mut *self.children.get_mut(&dist).unwrap();
+                let c = &mut *self.children.get_mut(&dist).unwrap();
                 return c.recursive_insert::<EditDistanceCalc>(Rc::clone(&value), Rc::clone(&record_found_in), Rc::clone(&edit_distance_calculator));
             } else {
                 let new_node = BKTreeNode::new(value, record_found_in);
                 match self.children.insert(dist, new_node) {
-                    Some(new_node) => return true,
+                    Some(_new_node) => return true,
                     None => return false,
                 }
             }
